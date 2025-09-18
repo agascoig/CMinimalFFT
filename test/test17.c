@@ -5,10 +5,12 @@
 #include "plan.h"
 #include <fftw3.h>
 #include <float.h>
-#include <mach/mach_time.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <time.h>
+
+#define NUM_TIMED_TESTS 10
+#define MAX_FACTORS 3
 
 static fftw_plan create_fftw_plan(int n, MFFTELEM *in, MFFTELEM *out,
                                   int inverse) {
@@ -108,9 +110,36 @@ void test_fft_kernel(int repeat_count, MFFTELEM **Y_ref, MFFTELEM **Y,
   }
 }
 
+void print_fns(char *buf, fft_func_t *fns) {
+  char fn[80];
+
+  if (fns == NULL)
+    return;
+
+  for (int i = 0; i < MAX_FACTORS; ++i) {
+    if (fns[i] == NULL)
+      continue;
+    for (int j=0;j<sizeof(dispatch)/sizeof(dispatch[0]);++j) {
+      if (((fft_func_t)(fns[i])) == dispatch[j]) {
+        sprintf(fn, "fftr%d ", j);
+        strcat(buf, fn);
+      }
+    }
+      if (fns[i] == (fft_func_t)bluestein) {
+        sprintf(fn, "bluestein ");
+        strcat(buf, fn);
+      } else if (fns[i] == (fft_func_t)direct_dft){
+        sprintf(fn, "direct_dft ");
+        strcat(buf, fn);
+      }
+  }
+  if (strlen(buf))
+    buf[strlen(buf) - 1] = 0; // remove last space
+}
+
 void print_result(const char *preamble, const char *name, int64_t N,
                   int num_factors, int64_t *Ns, int bm, double t_ref_s,
-                  double t_s) {
+                  double t_s, fft_func_t *fns) {
   char timing[256];
   if (bm) {
     sprintf(timing, "time = %e factor_ref = %e", t_s, t_s / t_ref_s);
@@ -118,26 +147,28 @@ void print_result(const char *preamble, const char *name, int64_t N,
     sprintf(timing, "untimed");
   }
 
+  char fn_str[256];
+  fn_str[0] = '\0';
+  print_fns(fn_str, fns);
+
   switch (num_factors) {
   case 1:
-    printf("%s %s N=%lld %s\n", preamble, name, Ns[0], timing);
+    printf("%s %s N=%lld %s (%s)\n", preamble, name, Ns[0], timing, fn_str);
     break;
   case 2:
-    printf("%s %s N=%lld=[%lld,%lld] %s\n", preamble, name, N, Ns[0], Ns[1],
-           timing);
+    printf("%s %s N=%lld=[%lld,%lld] %s (%s)\n", preamble, name, N, Ns[0], Ns[1],
+           timing, fn_str);
     break;
   case 3:
-    printf("%s %s N=%lld factors=%lld,%lld,%lld %s\n", preamble, name, N, Ns[0],
-           Ns[1], Ns[2], timing);
+    printf("%s %s N=%lld factors=%lld,%lld,%lld %s (%s)\n", preamble, name, N, Ns[0],
+           Ns[1], Ns[2], timing, fn_str);
     break;
   default:
-    printf("%s %s N=%lld %s\n", preamble, name, N, timing);
+    printf("%s %s N=%lld %s (%s)\n", preamble, name, N, timing, fn_str);
     break;
   }
   fflush(stdout);
 }
-
-#define NUM_TIMED_TESTS 10
 
 void test_fft(rng_gaussian_type *RNG, const char *name, int bm, int inverse,
               int64_t N, int *pc, int *fc, int num_factors, void *parent_fn,
@@ -164,11 +195,11 @@ void test_fft(rng_gaussian_type *RNG, const char *name, int bm, int inverse,
 
   // reporting
   if (approx_cmp_v(Y_ref, Y, N)) {
-    print_result("Failed for", name, N, num_factors, Ns, bm, t_ref_s, t_s);
+    print_result("Failed for", name, N, num_factors, Ns, bm, t_ref_s, t_s, fns);
     (*fc)++;
   } else {
     (*pc)++;
-    print_result("Passed for", name, N, num_factors, Ns, bm, t_ref_s, t_s);
+    print_result("Passed for", name, N, num_factors, Ns, bm, t_ref_s, t_s, fns);
   }
   free(X_ref);
   free(X);
@@ -190,8 +221,6 @@ static const int64_t factor_3[][3] = {
     {7, 25, 8},    {2, 3, 5},     {2, 5, 3},    {3, 2, 5},  {3, 5, 2},
     {64, 3, 5},    {3, 5, 64},    {5, 64, 3},   {1, 1, 64}, {27, 625, 49},
     {625, 27, 49}, {49, 27, 625}, {49, 625, 27}};
-
-#define MAX_FACTORS 3
 
 void hex_dump(const void *ptr, size_t len) {
   const unsigned char *data = (const unsigned char *)ptr;
@@ -285,6 +314,24 @@ void driver(rng_gaussian_type *RNG_p, struct hashmap_s *d, int *radix,
   }
 }
 
+void print_time() {
+    time_t now = time(NULL);
+    struct tm *t = localtime(&now);
+    char buf[64];
+    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", t);
+    printf("# %s\n\n", buf);
+}
+
+void get_plan_fns(fft_func_t *fns, int r, MinimalPlan *P) {
+  for (int i=0;i<MAX_FACTORS;++i)
+    fns[i] = NULL;
+
+  int limit = P->num_factors[r];
+  for (int i=0;i<limit;++i) {
+    fns[i] = P->ip[r][i].func;
+  }
+}
+
 int main() {
   const unsigned initial_size = 64;
   struct hashmap_s d;
@@ -297,10 +344,12 @@ int main() {
   int *pc = &pass;
   int *fc = &fail;
 
+  print_time();
+  
 #define RUN_DRIVER(radix_arr, num_factors, bm, inverse, parent_fn, N_vals,     \
                    name)                                                       \
   driver(&RNG, &d, (radix_arr), sizeof(radix_arr) / sizeof((radix_arr)[0]),    \
-         (num_factors), (bm), pc, fc, (inverse), (parent_fn), &(N_vals)[0][0], \
+         (num_factors), 1/*(bm)*/, pc, fc, (inverse), (parent_fn), &(N_vals)[0][0], \
          sizeof((N_vals)) / sizeof(N_vals[0]), (name))
 
   RUN_DRIVER(((int[]){2, 3, 5, 7}), 1, 0, 0, abort, factor_1,
@@ -382,13 +431,16 @@ int main() {
     int64_t *N_p = &N;
 
     MinimalPlan *P = create_min_plan(N_p, 1, 0, 0, P_NONE);
+    fft_func_t fns[MAX_FACTORS];
+    get_plan_fns(fns, 0, P);
 
-    test_fft(&RNG, "planner", 1, 0, N, pc, fc, 0, NULL, P, &N, NULL, NULL);
+    test_fft(&RNG, "planner", 1, 0, N, pc, fc, 0, NULL, P, &N, fns, NULL);
     free_min_plan(P);
 
     MinimalPlan *P_inv = create_min_plan(N_p, 1, 0, 0, P_INVERSE);
 
-    test_fft(&RNG, "planner inverse", 1, 1, N, pc, fc, 0, NULL, P_inv, &N, NULL,
+    get_plan_fns(fns, 0, P_inv);
+    test_fft(&RNG, "planner inverse", 1, 1, N, pc, fc, 0, NULL, P_inv, &N, fns,
              NULL);
     free_min_plan(P_inv);
   }

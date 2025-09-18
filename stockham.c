@@ -14,7 +14,7 @@ void fftr2(MFFTELEM **YY, MFFTELEM **XX, int64_t N,
   double complex w_l;
   double complex w;
   MFFTELEM c0, c1;
-  MFFTELEM *restrict tmp;
+  MFFTELEM * tmp;
 
   for (int64_t t = 0; t < e1; t++) {
     w = 1.0;
@@ -52,7 +52,7 @@ void fftr3(MFFTELEM **YY, MFFTELEM **XX, int64_t N,
   double complex w_l;
   double complex w;
   MFFTELEM c0, c1, c2, d0, d1, d2;
-  MFFTELEM *restrict tmp;
+  MFFTELEM * tmp;
 
   for (int64_t t = 0; t < e1; t++) {
     w = 1.0;
@@ -93,7 +93,7 @@ void fftr4(MFFTELEM **YY, MFFTELEM **XX, int64_t N,
   double complex w_l;
   double complex w;
   MFFTELEM c0, c1, c2, c3, d0, d1, d2, d3;
-  MFFTELEM *restrict tmp;
+  MFFTELEM * tmp;
 
   for (int64_t t = 0; t < e1; t++) {
     w = 1.0;
@@ -112,8 +112,10 @@ void fftr4(MFFTELEM **YY, MFFTELEM **XX, int64_t N,
         d3 = times_pmim(d3, inverse);
         Y[bp + stride * (k + 4 * j * m)] = d0 + d2;
         Y[bp + stride * (k + 4 * j * m + m)] = w * (d1 + d3);
-        Y[bp + stride * (k + 4 * j * m + 2 * m)] = w * w * (d0 - d2);
-        Y[bp + stride * (k + 4 * j * m + 3 * m)] = w * w * w * (d1 - d3);
+        const double complex w2 = w * w;
+        Y[bp + stride * (k + 4 * j * m + 2 * m)] = w2 * (d0 - d2);
+        const double complex w3 = w2 * w;
+        Y[bp + stride * (k + 4 * j * m + 3 * m)] = w3 * (d1 - d3);
       }
       w = w * w_l;
     }
@@ -142,7 +144,7 @@ void fftr5(MFFTELEM **YY, MFFTELEM **XX, int64_t N,
   double complex w_l;
   double complex w;
   MFFTELEM c0, c1, c2, c3, c4, d0, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10;
-  MFFTELEM *restrict tmp;
+  MFFTELEM * tmp;
 
   for (int64_t t = 0; t < e1; t++) {
     w = 1.0;
@@ -168,9 +170,12 @@ void fftr5(MFFTELEM **YY, MFFTELEM **XX, int64_t N,
         d10 = times_pmim(c53 * d2 - d3, inverse);
         Y[bp + stride * (k + 5 * j * m)] = c0 + d4;
         Y[bp + stride * (k + 5 * j * m + m)] = w * (d7 + d9);
-        Y[bp + stride * (k + 5 * j * m + 2 * m)] = w * w * (d8 + d10);
-        Y[bp + stride * (k + 5 * j * m + 3 * m)] = cpow(w, 3) * (d8 - d10);
-        Y[bp + stride * (k + 5 * j * m + 4 * m)] = cpow(w, 4) * (d7 - d9);
+        const double complex w2 = w * w;
+        Y[bp + stride * (k + 5 * j * m + 2 * m)] = w2 * (d8 + d10);
+        const double complex w3 = w2 * w;
+        Y[bp + stride * (k + 5 * j * m + 3 * m)] = w3 * (d8 - d10);
+        const double complex w4 = w3 * w;
+        Y[bp + stride * (k + 5 * j * m + 4 * m)] = w4 * (d7 - d9);
       }
       w = w * w_l;
     }
@@ -206,7 +211,7 @@ void fftr7(MFFTELEM **YY, MFFTELEM **XX, int64_t N,
   MFFTELEM a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14;
   MFFTELEM m1, m2, m3, m4, m5, m6, m7, m8;
   MFFTELEM x1, x2, x3, x4, x5, x6, x7;
-  MFFTELEM *restrict tmp;
+  MFFTELEM * tmp;
 
   for (int64_t t = 0; t < e1; t++) {
     w = 1.0;
@@ -257,11 +262,16 @@ void fftr7(MFFTELEM **YY, MFFTELEM **XX, int64_t N,
 
         Y[bp + stride * (k + 7 * j * m)] = c0 + a7;
         Y[bp + stride * (k + 7 * j * m + m)] = w * (x2 - x5);
-        Y[bp + stride * (k + 7 * j * m + 2 * m)] = cpow(w, 2) * (x3 - x6);
-        Y[bp + stride * (k + 7 * j * m + 3 * m)] = cpow(w, 3) * (x4 - x7);
-        Y[bp + stride * (k + 7 * j * m + 4 * m)] = cpow(w, 4) * (x4 + x7);
-        Y[bp + stride * (k + 7 * j * m + 5 * m)] = cpow(w, 5) * (x3 + x6);
-        Y[bp + stride * (k + 7 * j * m + 6 * m)] = cpow(w, 6) * (x2 + x5);
+        const complex double w2 = w * w;
+        Y[bp + stride * (k + 7 * j * m + 2 * m)] = w2 * (x3 - x6);
+        const complex double w3 = w2 * w;
+        Y[bp + stride * (k + 7 * j * m + 3 * m)] = w3 * (x4 - x7);
+        const complex double w4 = w3 * w;
+        Y[bp + stride * (k + 7 * j * m + 4 * m)] = w4 * (x4 + x7);
+        const complex double w5 = w4 * w;
+        Y[bp + stride * (k + 7 * j * m + 5 * m)] = w5 * (x3 + x6);
+        const complex double w6 = w5 * w;
+        Y[bp + stride * (k + 7 * j * m + 6 * m)] = w6 * (x2 + x5);
       }
       w = w * w_l;
     }
@@ -290,7 +300,7 @@ void fftr8(MFFTELEM **YY, MFFTELEM **XX, int64_t N,
   MFFTELEM c0, c1, c2, c3, c4, c5, c6, c7;
   MFFTELEM d0, d1, d2, d3, d4, d5, d6, d7;
   MFFTELEM m0, m1, m2, m3, m4, m5, m6, m7, m8, m9;
-  MFFTELEM *restrict tmp;
+  MFFTELEM * tmp;
 
   for (int64_t t = 0; t < e1; t++) {
     w = 1.0;
@@ -328,12 +338,18 @@ void fftr8(MFFTELEM **YY, MFFTELEM **XX, int64_t N,
 
         Y[bp + stride * (k + 8 * j * m)] = m0 + m2;
         Y[bp + stride * (k + 8 * j * m + m)] = w * (m6 + m8);
-        Y[bp + stride * (k + 8 * j * m + 2 * m)] = w * w * (m1 + m3);
-        Y[bp + stride * (k + 8 * j * m + 3 * m)] = cpow(w, 3) * (m7 - m9);
-        Y[bp + stride * (k + 8 * j * m + 4 * m)] = cpow(w, 4) * (m0 - m2);
-        Y[bp + stride * (k + 8 * j * m + 5 * m)] = cpow(w, 5) * (m7 + m9);
-        Y[bp + stride * (k + 8 * j * m + 6 * m)] = cpow(w, 6) * (m1 - m3);
-        Y[bp + stride * (k + 8 * j * m + 7 * m)] = cpow(w, 7) * (m6 - m8);
+        const complex double w2 = w * w;
+        Y[bp + stride * (k + 8 * j * m + 2 * m)] = w2 * (m1 + m3);
+        const complex double w3 = w2 * w;
+        Y[bp + stride * (k + 8 * j * m + 3 * m)] = w3 * (m7 - m9);
+        const complex double w4 = w3 * w;
+        Y[bp + stride * (k + 8 * j * m + 4 * m)] = w4 * (m0 - m2);
+        const complex double w5 = w4 * w;
+        Y[bp + stride * (k + 8 * j * m + 5 * m)] = w5 * (m7 + m9);
+        const complex double w6 = w5 * w;
+        Y[bp + stride * (k + 8 * j * m + 6 * m)] = w6 * (m1 - m3);
+        const complex double w7 = w6 * w;
+        Y[bp + stride * (k + 8 * j * m + 7 * m)] = w7 * (m6 - m8);
       }
       w = w * w_l;
     }
@@ -371,7 +387,7 @@ void fftr9(MFFTELEM **YY, MFFTELEM **XX, int64_t N,
       t16;
   MFFTELEM m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10;
   MFFTELEM s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12;
-  MFFTELEM *restrict tmp;
+  MFFTELEM * tmp;
 
   for (int64_t t = 0; t < e1; t++) {
     w = 1.0;
@@ -438,13 +454,20 @@ void fftr9(MFFTELEM **YY, MFFTELEM **XX, int64_t N,
 
         Y[bp + stride * (k + 9 * j * m)] = m0;
         Y[bp + stride * (k + 9 * j * m + m)] = w * (s7 + s10);
-        Y[bp + stride * (k + 9 * j * m + 2 * m)] = cpow(w, 2) * (s8 - s11);
-        Y[bp + stride * (k + 9 * j * m + 3 * m)] = cpow(w, 3) * (s6 + m6);
-        Y[bp + stride * (k + 9 * j * m + 4 * m)] = cpow(w, 4) * (s9 + s12);
-        Y[bp + stride * (k + 9 * j * m + 5 * m)] = cpow(w, 5) * (s9 - s12);
-        Y[bp + stride * (k + 9 * j * m + 6 * m)] = cpow(w, 6) * (s6 - m6);
-        Y[bp + stride * (k + 9 * j * m + 7 * m)] = cpow(w, 7) * (s8 + s11);
-        Y[bp + stride * (k + 9 * j * m + 8 * m)] = cpow(w, 8) * (s7 - s10);
+        const complex double w2 = w * w;
+        Y[bp + stride * (k + 9 * j * m + 2 * m)] = w2 * (s8 - s11);
+        const complex double w3 = w2 * w;
+        Y[bp + stride * (k + 9 * j * m + 3 * m)] = w3 * (s6 + m6);
+        const complex double w4 = w3 * w;
+        Y[bp + stride * (k + 9 * j * m + 4 * m)] = w4 * (s9 + s12);
+        const complex double w5 = w4 * w;
+        Y[bp + stride * (k + 9 * j * m + 5 * m)] = w5 * (s9 - s12);
+        const complex double w6 = w5 * w;
+        Y[bp + stride * (k + 9 * j * m + 6 * m)] = w6 * (s6 - m6);
+        const complex double w7 = w6 * w;
+        Y[bp + stride * (k + 9 * j * m + 7 * m)] = w7 * (s8 + s11);
+        const complex double w8 = w7 * w;
+        Y[bp + stride * (k + 9 * j * m + 8 * m)] = w8 * (s7 - s10);
       }
       w = w * w_l;
     }
