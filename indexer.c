@@ -1,4 +1,4 @@
-// indexer.c - needed because column operator indexing for multi-dimensional array is slow
+// indexer.c - column-major indexing
 
 #include <stdio.h>
 #include <stdlib.h>
