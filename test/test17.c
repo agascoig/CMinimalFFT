@@ -285,20 +285,6 @@ void driver(rng_gaussian_type *RNG_p, struct hashmap_s *d, int *radix,
   }
 }
 
-void test_fftr3() {
-  const int N = 27;
-  const int e1 = 3;
-  MFFTELEM *X = minaligned_calloc(sizeof(MFFTELEM), sizeof(MFFTELEM), N);
-  for (int i = 0; i < N; ++i) {
-    X[i] = (i & 1) ? 1 : -1;
-  }
-  MFFTELEM *Y = minaligned_calloc(sizeof(MFFTELEM), sizeof(MFFTELEM), N);
-  MFFTELEM **XX = &X;
-  MFFTELEM **YY = &Y;
-  fftr3(YY, XX, N, e1, 0, 1, P_NONE);
-  print_v("Y", *YY, N);
-  return;
-}
 int main() {
   const unsigned initial_size = 64;
   struct hashmap_s d;
