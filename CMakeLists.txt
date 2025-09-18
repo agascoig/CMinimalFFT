@@ -30,7 +30,6 @@ set(OPENLIBM_PATH "$ENV{HOME}/github/openlibm/build")
 # Link with OpenLibm instead of default math library
 target_link_libraries(minimalfft
 ${OPENLIBM_PATH}/libopenlibm.dylib
-/opt/homebrew/lib/libfftw3.dylib # TBD
 ${SYSTEM_LIB})
 
 # Add OpenLibm include directory if needed
