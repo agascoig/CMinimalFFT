@@ -15,6 +15,9 @@ set(ASM_FLAGS
     -std=c23
     -fverbose-asm
     -g
+    -Rpass=loop-vectorize
+    -Rpass-missed=loop-vectorize
+    -Rpass-analysis=loop-vectorize
     -I$ENV{HOME}/github/openlibm/include
     -I/usr/local/include
 )
@@ -34,7 +37,7 @@ foreach(src ${SRC_FILES})
     get_filename_component(src_abs ${src} ABSOLUTE)
     add_custom_command(
         OUTPUT ${src_name}.s
-        COMMAND ${CMAKE_C_COMPILER} ${ASM_FLAGS} -S ${src_abs} -o ${src_name}.s
+        COMMAND ${CMAKE_C_COMPILER} ${ASM_FLAGS} -S ${src_abs} -o ${src_name}.s > ${src_name}_build.txt 2>&1
         DEPENDS ${src_abs}
         COMMENT "Generating assembly for ${src_abs}"
         VERBATIM
