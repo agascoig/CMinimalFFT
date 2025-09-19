@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#define NUM_TIMED_TESTS 10
+#define NUM_TIMED_TESTS 20
 #define MAX_FACTORS 3
 
 static fftw_plan create_fftw_plan(int n, MFFTELEM *in, MFFTELEM *out,
@@ -52,11 +52,26 @@ void print_v(const char *name, MFFTELEM *v, size_t n) {
 }
 
 double get_s_time(int64_t start, int64_t end) {
-  double elapsed_ns = (end - start);
+  int64_t interval = end - start;
+  double elapsed_ns = (double)interval;
 
-  if (elapsed_ns == 0.0)
-    elapsed_ns = DBL_EPSILON;
   return elapsed_ns * 1e-9;
+}
+
+double get_bm_time(double *times, int n) {
+  double t_min = DBL_MAX, t_max = 0.0;
+  int i_min = -1, i_max = -1;
+  for (int i=0;i<n;++i) {
+    if ((times[i]!=0) && (times[i] < t_min)) {
+      t_min = times[i];
+      i_min = i;
+    }
+    if ((times[i]!=0) && (times[i] > t_max)) {
+      t_max = times[i];
+      i_max = i;
+    }
+  }
+  return t_min;
 }
 
 void test_fft_kernel(int repeat_count, MFFTELEM **Y_ref, MFFTELEM **Y,
@@ -68,29 +83,36 @@ void test_fft_kernel(int repeat_count, MFFTELEM **Y_ref, MFFTELEM **Y,
   int64_t t_ref_start, t_ref_end;
   int64_t t_start, t_end;
 
+  *t_ref_s = 0.0;
+  *t_s = 0.0;
+
+  memcpy(*X, *copy_X, N * sizeof(MFFTELEM));
+
+  t_ref_start = clock_gettime_nsec_np(CLOCK_MONOTONIC);
+  fftw_execute(P_ref);
+  t_ref_end = clock_gettime_nsec_np(CLOCK_MONOTONIC);
+  if ((t_ref_end-t_ref_start) < 10000)
+      repeat_count *= 40; // oversample if less than 10 us
+
+  int num_tests = repeat_count;
+
+  t_ref_start = clock_gettime_nsec_np(CLOCK_MONOTONIC);
   while (repeat_count-- > 0) {
-    t_ref_start = clock_gettime_nsec_np(CLOCK_MONOTONIC);
     fftw_execute(P_ref);
-    t_ref_end = clock_gettime_nsec_np(CLOCK_MONOTONIC);
-
+  
     memcpy(*X_ref, *copy_X, N * sizeof(MFFTELEM));
+  }
+  t_ref_end = clock_gettime_nsec_np(CLOCK_MONOTONIC);
 
-    double t_ref = get_s_time(t_ref_start, t_ref_end);
-    if (t_ref < *t_ref_s)
-      *t_ref_s = t_ref;
+  repeat_count = num_tests;
 
-    memcpy(*X, *copy_X, N * sizeof(MFFTELEM));
-
+  t_start = clock_gettime_nsec_np(CLOCK_MONOTONIC);
+  while (repeat_count-- > 0) {
     if (P != NULL) {
-      t_start = clock_gettime_nsec_np(CLOCK_MONOTONIC);
       execute_plan(P, Y, X, 0, 0, 1);
-      t_end = clock_gettime_nsec_np(CLOCK_MONOTONIC);
+      memcpy(*X, *copy_X, N * sizeof(MFFTELEM));
 
-      double current_t_s = get_s_time(t_start, t_end);
-      if (current_t_s < *t_s)
-        *t_s = current_t_s;
     } else {
-      t_start = clock_gettime_nsec_np(CLOCK_MONOTONIC);
       if (num_factors == 1) {
         ((fft_func_t)fns[0])(Y, X, N, es[0], 0, 1, inverse);
       } else if (num_factors == 2) {
@@ -102,11 +124,14 @@ void test_fft_kernel(int repeat_count, MFFTELEM **Y_ref, MFFTELEM **Y,
       } else {
         bluestein(Y, X, N, 1, 0, 1, inverse);
       }
-      t_end = clock_gettime_nsec_np(CLOCK_MONOTONIC);
-      double current_t_s = get_s_time(t_start, t_end);
-      if (current_t_s < *t_s)
-        *t_s = current_t_s;
+      memcpy(*X, *copy_X, N * sizeof(MFFTELEM));
     }
+  }
+  t_end = clock_gettime_nsec_np(CLOCK_MONOTONIC);
+
+  if (bm) {
+    *t_ref_s = get_s_time(t_ref_start, t_ref_end) / (double)num_tests;
+    *t_s = get_s_time(t_start, t_end) / (double)num_tests;
   }
 }
 
@@ -119,19 +144,19 @@ void print_fns(char *buf, fft_func_t *fns) {
   for (int i = 0; i < MAX_FACTORS; ++i) {
     if (fns[i] == NULL)
       continue;
-    for (int j=0;j<sizeof(dispatch)/sizeof(dispatch[0]);++j) {
+    for (int j = 0; j < sizeof(dispatch) / sizeof(dispatch[0]); ++j) {
       if (((fft_func_t)(fns[i])) == dispatch[j]) {
         sprintf(fn, "fftr%d ", j);
         strcat(buf, fn);
       }
     }
-      if (fns[i] == (fft_func_t)bluestein) {
-        sprintf(fn, "bluestein ");
-        strcat(buf, fn);
-      } else if (fns[i] == (fft_func_t)direct_dft){
-        sprintf(fn, "direct_dft ");
-        strcat(buf, fn);
-      }
+    if (fns[i] == (fft_func_t)bluestein) {
+      sprintf(fn, "bluestein ");
+      strcat(buf, fn);
+    } else if (fns[i] == (fft_func_t)direct_dft) {
+      sprintf(fn, "direct_dft ");
+      strcat(buf, fn);
+    }
   }
   if (strlen(buf))
     buf[strlen(buf) - 1] = 0; // remove last space
@@ -142,7 +167,7 @@ void print_result(const char *preamble, const char *name, int64_t N,
                   double t_s, fft_func_t *fns) {
   char timing[256];
   if (bm) {
-    sprintf(timing, "time = %e factor_ref = %e", t_s, t_s / t_ref_s);
+    sprintf(timing, "time = %2.2e factor_ref = %2.2e", t_s, t_s / t_ref_s);
   } else {
     sprintf(timing, "untimed");
   }
@@ -156,12 +181,12 @@ void print_result(const char *preamble, const char *name, int64_t N,
     printf("%s %s N=%lld %s (%s)\n", preamble, name, Ns[0], timing, fn_str);
     break;
   case 2:
-    printf("%s %s N=%lld=[%lld,%lld] %s (%s)\n", preamble, name, N, Ns[0], Ns[1],
-           timing, fn_str);
+    printf("%s %s N=%lld=[%lld,%lld] %s (%s)\n", preamble, name, N, Ns[0],
+           Ns[1], timing, fn_str);
     break;
   case 3:
-    printf("%s %s N=%lld factors=%lld,%lld,%lld %s (%s)\n", preamble, name, N, Ns[0],
-           Ns[1], Ns[2], timing, fn_str);
+    printf("%s %s N=%lld factors=%lld,%lld,%lld %s (%s)\n", preamble, name, N,
+           Ns[0], Ns[1], Ns[2], timing, fn_str);
     break;
   default:
     printf("%s %s N=%lld %s (%s)\n", preamble, name, N, timing, fn_str);
@@ -208,8 +233,8 @@ void test_fft(rng_gaussian_type *RNG, const char *name, int bm, int inverse,
   free(Y);
 }
 
-static const int64_t factor_1[][1] = {{8},  {4}, {25}, {27}, {16},        {125},
-                                      {49}, {64}, {81}, {9 * 9 * 9}, {256}};
+static const int64_t factor_1[][1] = {
+    {8}, {4}, {25}, {27}, {16}, {125}, {49}, {64}, {81}, {9 * 9 * 9}, {256}};
 
 static const int64_t factor_2[][2] = {
     {4, 25},   {25, 4}, {4, 49}, {8, 9},  {256, 25}, {25, 256},
@@ -315,19 +340,19 @@ void driver(rng_gaussian_type *RNG_p, struct hashmap_s *d, int *radix,
 }
 
 void print_time() {
-    time_t now = time(NULL);
-    struct tm *t = localtime(&now);
-    char buf[64];
-    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", t);
-    printf("# %s\n\n", buf);
+  time_t now = time(NULL);
+  struct tm *t = localtime(&now);
+  char buf[64];
+  strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", t);
+  printf("# %s\n\n", buf);
 }
 
 void get_plan_fns(fft_func_t *fns, int r, MinimalPlan *P) {
-  for (int i=0;i<MAX_FACTORS;++i)
+  for (int i = 0; i < MAX_FACTORS; ++i)
     fns[i] = NULL;
 
   int limit = P->num_factors[r];
-  for (int i=0;i<limit;++i) {
+  for (int i = 0; i < limit; ++i) {
     fns[i] = P->ip[r][i].func;
   }
 }
@@ -345,12 +370,12 @@ int main() {
   int *fc = &fail;
 
   print_time();
-  
+
 #define RUN_DRIVER(radix_arr, num_factors, bm, inverse, parent_fn, N_vals,     \
                    name)                                                       \
   driver(&RNG, &d, (radix_arr), sizeof(radix_arr) / sizeof((radix_arr)[0]),    \
-         (num_factors), 1/*(bm)*/, pc, fc, (inverse), (parent_fn), &(N_vals)[0][0], \
-         sizeof((N_vals)) / sizeof(N_vals[0]), (name))
+         (num_factors), 1 /*(bm)*/, pc, fc, (inverse), (parent_fn),            \
+         &(N_vals)[0][0], sizeof((N_vals)) / sizeof(N_vals[0]), (name))
 
   RUN_DRIVER(((int[]){2, 3, 5, 7}), 1, 0, 0, abort, factor_1,
              "stockham test 0");
