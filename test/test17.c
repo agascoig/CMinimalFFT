@@ -87,6 +87,7 @@ void test_fft_kernel(int repeat_count, MFFTELEM **Y_ref, MFFTELEM **Y,
   *t_s = 0.0;
 
   memcpy(*X, *copy_X, N * sizeof(MFFTELEM));
+  memcpy(*X_ref, *copy_X, N * sizeof(MFFTELEM));
 
   t_ref_start = clock_gettime_nsec_np(CLOCK_MONOTONIC);
   fftw_execute(P_ref);
@@ -94,12 +95,13 @@ void test_fft_kernel(int repeat_count, MFFTELEM **Y_ref, MFFTELEM **Y,
   if ((t_ref_end-t_ref_start) < 10000)
       repeat_count *= 40; // oversample if less than 10 us
 
+  memcpy(*X_ref, *copy_X, N * sizeof(MFFTELEM));
+
   int num_tests = repeat_count;
 
   t_ref_start = clock_gettime_nsec_np(CLOCK_MONOTONIC);
   while (repeat_count-- > 0) {
     fftw_execute(P_ref);
-  
     memcpy(*X_ref, *copy_X, N * sizeof(MFFTELEM));
   }
   t_ref_end = clock_gettime_nsec_np(CLOCK_MONOTONIC);

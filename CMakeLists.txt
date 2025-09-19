@@ -8,6 +8,7 @@ set(SDKROOT /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk)
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+# -ffast-math
 set(CMAKE_C_FLAGS "-march=native -O3 -fno-builtin -fPIC -funroll-loops -std=c23")
 
 add_library(minimalfft
