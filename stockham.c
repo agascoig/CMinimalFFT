@@ -59,7 +59,7 @@ void fftr3(MFFTELEM **YY, MFFTELEM **XX, int64_t N,
     minsincos(r / l, imag(&w_l), real(&w_l));
 
     for (int64_t j = 0; j < l; j++) {
-      complex double w2 = w * w;
+      double complex w2 = w * w;
       for (int64_t k = 0; k < m; k++) {
         c0 = X[bp + stride * (k + j * m)];
         c1 = X[bp + stride * (k + j * m + l * m)];
@@ -219,11 +219,11 @@ void fftr7(MFFTELEM **YY, MFFTELEM **XX, int64_t N,
     minsincos(r / l, imag(&w_l), real(&w_l));
 
     for (int64_t j = 0; j < l; j++) {
-      const complex double w2 = w * w;
-      const complex double w3 = w2 * w;
-      const complex double w4 = w3 * w;
-      const complex double w5 = w4 * w;
-      const complex double w6 = w5 * w;
+      const double complex w2 = w * w;
+      const double complex w3 = w2 * w;
+      const double complex w4 = w3 * w;
+      const double complex w5 = w4 * w;
+      const double complex w6 = w5 * w;
       for (int64_t k = 0; k < m; k++) {
         c0 = X[bp + stride * (k + j * m)];
         c1 = X[bp + stride * (k + j * m + l * m)];
@@ -308,12 +308,12 @@ void fftr8(MFFTELEM **YY, MFFTELEM **XX, int64_t N,
     minsincos(r / l, imag(&w_l), real(&w_l));
 
     for (int64_t j = 0; j < l; j++) {
-      const complex double w2 = w * w;
-      const complex double w3 = w2 * w;
-      const complex double w4 = w3 * w;
-      const complex double w5 = w4 * w;
-      const complex double w6 = w5 * w;
-      const complex double w7 = w6 * w;
+      const double complex w2 = w * w;
+      const double complex w3 = w2 * w;
+      const double complex w4 = w3 * w;
+      const double complex w5 = w4 * w;
+      const double complex w6 = w5 * w;
+      const double complex w7 = w6 * w;
       for (int64_t k = 0; k < m; k++) {
         c0 = X[bp + stride * (k + j * m)];
         c1 = X[bp + stride * (k + j * m + l * m)];
@@ -395,13 +395,13 @@ void fftr9(MFFTELEM **YY, MFFTELEM **XX, int64_t N,
     minsincos(r / l, imag(&w_l), real(&w_l));
 
     for (int64_t j = 0; j < l; j++) {
-      const complex double w2 = w * w;
-      const complex double w3 = w2 * w;
-      const complex double w4 = w3 * w;
-      const complex double w5 = w4 * w;
-      const complex double w6 = w5 * w;
-      const complex double w7 = w6 * w;
-      const complex double w8 = w7 * w;
+      const double complex w2 = w * w;
+      const double complex w3 = w2 * w;
+      const double complex w4 = w3 * w;
+      const double complex w5 = w4 * w;
+      const double complex w6 = w5 * w;
+      const double complex w7 = w6 * w;
+      const double complex w8 = w7 * w;
       for (int64_t k = 0; k < m; k++) {
         c0 = X[bp + stride * (k + j * m)];
         c1 = X[bp + stride * (k + j * m + l * m)];
