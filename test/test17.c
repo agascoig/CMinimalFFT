@@ -61,12 +61,12 @@ double get_s_time(int64_t start, int64_t end) {
 double get_bm_time(double *times, int n) {
   double t_min = DBL_MAX, t_max = 0.0;
   int i_min = -1, i_max = -1;
-  for (int i=0;i<n;++i) {
-    if ((times[i]!=0) && (times[i] < t_min)) {
+  for (int i = 0; i < n; ++i) {
+    if ((times[i] != 0) && (times[i] < t_min)) {
       t_min = times[i];
       i_min = i;
     }
-    if ((times[i]!=0) && (times[i] > t_max)) {
+    if ((times[i] != 0) && (times[i] > t_max)) {
       t_max = times[i];
       i_max = i;
     }
@@ -92,8 +92,8 @@ void test_fft_kernel(int repeat_count, MFFTELEM **Y_ref, MFFTELEM **Y,
   t_ref_start = clock_gettime_nsec_np(CLOCK_MONOTONIC);
   fftw_execute(P_ref);
   t_ref_end = clock_gettime_nsec_np(CLOCK_MONOTONIC);
-  if ((t_ref_end-t_ref_start) < 10000)
-      repeat_count *= 40; // oversample if less than 10 us
+  if ((t_ref_end - t_ref_start) < 10000)
+    repeat_count *= 40; // oversample if less than 10 us
 
   memcpy(*X_ref, *copy_X, N * sizeof(MFFTELEM));
 
@@ -249,6 +249,13 @@ static const int64_t factor_3[][3] = {
     {64, 3, 5},    {3, 5, 64},    {5, 64, 3},   {1, 1, 64}, {27, 625, 49},
     {625, 27, 49}, {49, 27, 625}, {49, 625, 27}};
 
+static const int64_t high_radix_factor_1[][1] = {
+    {262144}, {2097152}, // powers of 8
+    {531441}, {4782969},  // powers of 9
+    {78125},  {390625},  // powers of 5
+    {823543}, {5764801}  // powers of 7
+};
+
 void hex_dump(const void *ptr, size_t len) {
   const unsigned char *data = (const unsigned char *)ptr;
   for (size_t i = 0; i < len; ++i) {
@@ -330,14 +337,14 @@ void driver(rng_gaussian_type *RNG_p, struct hashmap_s *d, int *radix,
           break;
         }
       }
+      char *key = getkey(key_len, parent_fn, fns, Ns, es, bm, inverse);
+      void *element = hashmap_get(d, key, key_len);
+      if (element != NULL || i != num_factors)
+        continue;
+      hashmap_put(d, key, key_len, (void *)1);
+      test_fft(RNG_p, name, bm, inverse, prod(Ns, num_factors), pc, fc,
+               num_factors, parent_fn, 0, Ns, fns, es);
     }
-    char *key = getkey(key_len, parent_fn, fns, Ns, es, bm, inverse);
-    void *element = hashmap_get(d, key, key_len);
-    if (element != NULL || i != num_factors)
-      continue;
-    hashmap_put(d, key, key_len, (void *)1);
-    test_fft(RNG_p, name, bm, inverse, prod(Ns, num_factors), pc, fc,
-             num_factors, parent_fn, 0, Ns, fns, es);
   }
 }
 
@@ -444,6 +451,21 @@ int main() {
              "prime factor 3 test 5");
 
   hashmap_destroy(&d);
+  code = hashmap_create(initial_size, &d);
+  assert(code == 0 && "Failed to create hashmap 2.");
+
+  RUN_DRIVER(((int[]){3}), 1, 0, 0, abort, high_radix_factor_1, "radix 3 test");
+
+  RUN_DRIVER(((int[]){4}), 1, 0, 0, abort, high_radix_factor_1, "radix 4 test");
+
+  RUN_DRIVER(((int[]){5}), 1, 0, 0, abort, high_radix_factor_1, "radix 5 test");
+
+  RUN_DRIVER(((int[]){7}), 1, 0, 0, abort, high_radix_factor_1, "radix 7 test");
+
+  RUN_DRIVER(((int[]){8}), 1, 0, 0, abort, high_radix_factor_1, "radix 8 test");
+
+  RUN_DRIVER(((int[]){9}), 1, 0, 0, abort, high_radix_factor_1, "radix 9 test");
+
 
   static int64_t planner_n[] = {
       100,     196,    72,  6400,   80,
